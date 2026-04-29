@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>家計簿</title>
+<style>
+:root {
+  --pink: #C94F7A;
+  --pink-light: #F8E8F0;
+  --pink-dark: #8C2F54;
+  --green: #1A9068;
+  --green-light: #E2F2EC;
+  --red: #D63B3A;
+  --bg: #F7F5F2;
+  --surface: #FFFFFF;
+  --surface2: #F0EDE9;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --text: #1A1816;
+  --text2: #6B6560;
+  --text3: #A09890;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --aira: #2563EB;
+  --aira-bg: #EFF4FF;
+  --yukari: #DC2626;
+  --yukari-bg: #FEF2F2;
+  --kyoyu: #16A34A;
+  --kyoyu-bg: #F0FDF4;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pink: #E07AA0;
+    --pink-light: #3A1F2B;
+    --pink-dark: #F0A0C0;
+    --green: #34C98A;
+    --green-light: #0D2E20;
+    --red: #F07070;
+    --bg: #111010;
+    --surface: #1E1C1A;
+    --surface2: #2A2724;
+    --border: rgba(255,255,255,0.09);
+    --border2: rgba(255,255,255,0.15);
+    --text: #F0EDE8;
+    --text2: #9E9890;
+    --text3: #5E5A55;
+    --aira: #60A5FA;
+    --aira-bg: #1A2540;
+    --yukari: #F87171;
+    --yukari-bg: #2E1515;
+    --kyoyu: #4ADE80;
+    --kyoyu-bg: #0D2518;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 48px;
+}
+.app-header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 16px 18px 0; position: sticky; top: 0; z-index: 100;
+}
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.app-title { font-size:18px; font-weight:700; color:var(--text); }
+.app-year { font-size:12px; color:var(--text2); }
+.sync-btn {
+  background:var(--surface2); border:1px solid var(--border); border-radius:20px;
+  padding:5px 12px; font-size:12px; color:var(--text2);
+  display:flex; align-items:center; gap:5px;
+}
+.sync-dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; }
+.sync-dot.syncing { background:#F59E0B; animation:pulse 1s infinite; }
+.sync-dot.error { background:var(--red); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+.month-scroll { display:flex; gap:4px; overflow-x:auto; padding:0 0 12px; scrollbar-width:none; }
+.month-scroll::-webkit-scrollbar { display:none; }
+.month-tab {
+  flex-shrink:0; padding:7px 14px; border-radius:20px; border:1px solid var(--border);
+  background:transparent; font-size:13px; color:var(--text2); cursor:pointer; transition:all 0.15s;
+}
+.month-tab.active { background:var(--pink); border-color:var(--pink); color:#fff; font-weight:600; }
+.content { padding:14px 14px 0; }
+.summary-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
+.sum-card {
+  background:var(--surface); border-radius:var(--radius-sm); border:1px solid var(--border);
+  padding:11px 8px; text-align:center;
+}
+.sum-label { font-size:10px; color:var(--text2); margin-bottom:5px; font-weight:500; }
+.sum-value { font-size:13px; font-weight:700; }
+.sum-value.income { color:var(--green); }
+.sum-value.expense { color:var(--pink); }
+.sum-value.positive { color:var(--green); }
+.sum-value.negative { color:var(--red); }
+.carryover-badge {
+  background:var(--green-light); border:1px solid var(--green); border-radius:var(--radius-sm);
+  padding:8px 12px; font-size:12px; color:var(--green); margin-bottom:12px;
+  display:flex; align-items:center; gap:6px; line-height:1.5;
+}
+.calendar {
+  background:var(--surface); border-radius:var(--radius); border:1px solid var(--border);
+  overflow:hidden; margin-bottom:14px;
+}
+.cal-month-title {
+  padding:11px 14px; font-size:13px; font-weight:600; color:var(--text);
+  border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;
+}
+.cal-dows { display:grid; grid-template-columns:repeat(7,1fr); background:var(--surface2); border-bottom:1px solid var(--border); }
+.cal-dow { text-align:center; padding:7px 0; font-size:11px; color:var(--text2); font-weight:600; }
+.cal-dow.sun { color:var(--red); }
+.cal-dow.sat { color:var(--aira); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); }
+.cal-cell {
+  min-height:62px; padding:4px 3px; border-right:1px solid var(--border);
+  border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s;
+}
+.cal-cell:hover { background:var(--surface2); }
+.cal-cell.empty { cursor:default; background:var(--surface2); opacity:0.4; }
+.cal-cell.selected { background:var(--pink-light); }
+.cal-day-num {
+  font-size:12px; font-weight:500; color:var(--text);
+  width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+  border-radius:50%; margin-bottom:2px;
+}
+.cal-day-num.sun { color:var(--red); }
+.cal-day-num.sat { color:var(--aira); }
+.cal-day-num.today { background:var(--pink); color:#fff; }
+.cal-exp { font-size:10px; color:var(--pink); line-height:1.4; }
+.cal-inc { font-size:10px; color:var(--green); line-height:1.4; }
+.cal-payers { display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
+.payer-dot { width:6px; height:6px; border-radius:50%; }
+.day-panel { background:var(--surface); border-radius:var(--radius); border:1px solid var(--border); margin-bottom:14px; overflow:hidden; }
+.panel-header {
+  padding:13px 16px; display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--border); background:var(--pink-light);
+}
+.panel-title { font-size:15px; font-weight:700; color:var(--pink); }
+.panel-close { background:none; border:none; cursor:pointer; color:var(--text2); font-size:18px; padding:2px 6px; border-radius:6px; }
+.add-form { padding:13px 14px; border-bottom:1px solid var(--border); }
+.form-title { font-size:11px; font-weight:600; color:var(--text2); margin-bottom:9px; letter-spacing:0.04em; }
+.type-toggle { display:flex; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border2); margin-bottom:9px; }
+.type-btn { flex:1; padding:9px 0; font-size:13px; font-weight:600; border:none; background:var(--surface); color:var(--text2); cursor:pointer; transition:all 0.15s; }
+.type-btn.active.income { background:var(--green); color:#fff; }
+.type-btn.active.expense { background:var(--pink); color:#fff; }
+.payer-selector { display:flex; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border2); margin-bottom:9px; }
+.payer-btn { flex:1; padding:9px 0; font-size:13px; font-weight:600; border:none; background:var(--surface); color:var(--text2); cursor:pointer; transition:all 0.15s; }
+.payer-btn.active.aira { background:var(--aira); color:#fff; }
+.payer-btn.active.yukari { background:var(--yukari); color:#fff; }
+.payer-btn.active.kyoyu { background:var(--kyoyu); color:#fff; }
+.form-inputs { display:flex; flex-direction:column; gap:8px; }
+.form-inputs input {
+  width:100%; padding:10px 12px; border:1px solid var(--border2);
+  border-radius:var(--radius-sm); font-size:14px; background:var(--surface);
+  color:var(--text); outline:none; transition:border-color 0.15s;
+}
+.form-inputs input:focus { border-color:var(--pink); }
+.submit-btn {
+  width:100%; padding:11px; background:var(--pink); color:#fff; border:none;
+  border-radius:var(--radius-sm); font-size:14px; font-weight:700; cursor:pointer; margin-top:2px;
+}
+.entry-list { padding:8px 10px; display:flex; flex-direction:column; gap:6px; }
+.entry-empty { text-align:center; padding:18px; font-size:13px; color:var(--text3); }
+.entry-item { display:flex; align-items:center; gap:9px; padding:9px 10px; background:var(--surface2); border-radius:var(--radius-sm); }
+.entry-bar { width:3px; border-radius:2px; align-self:stretch; flex-shrink:0; }
+.entry-bar.income { background:var(--green); }
+.entry-bar.expense { background:var(--pink); }
+.entry-body { flex:1; min-width:0; }
+.entry-content { font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.entry-meta { display:flex; align-items:center; gap:5px; margin-top:3px; }
+.entry-type-label { font-size:11px; color:var(--text3); }
+.payer-badge { font-size:10px; font-weight:700; padding:1px 7px; border-radius:10px; }
+.payer-badge.aira { background:var(--aira-bg); color:var(--aira); }
+.payer-badge.yukari { background:var(--yukari-bg); color:var(--yukari); }
+.payer-badge.kyoyu { background:var(--kyoyu-bg); color:var(--kyoyu); }
+.entry-amount { font-size:14px; font-weight:700; flex-shrink:0; }
+.entry-amount.income { color:var(--green); }
+.entry-amount.expense { color:var(--pink); }
+.entry-btns { display:flex; gap:2px; flex-shrink:0; }
+.entry-btn { background:none; border:none; cursor:pointer; padding:5px 6px; border-radius:6px; font-size:13px; color:var(--text2); }
+.entry-btn.del:hover { color:var(--red); }
+.edit-inline {
+  padding:10px 12px; background:var(--pink-light); border-radius:var(--radius-sm);
+  display:flex; flex-direction:column; gap:7px; margin:0 10px 6px;
+}
+.edit-toggle-row { display:flex; border-radius:6px; overflow:hidden; border:1px solid var(--border2); }
+.edit-toggle-btn { flex:1; padding:7px 0; font-size:12px; font-weight:600; border:none; background:var(--surface); color:var(--text2); cursor:pointer; }
+.edit-toggle-btn.active.income { background:var(--green); color:#fff; }
+.edit-toggle-btn.active.expense { background:var(--pink); color:#fff; }
+.edit-toggle-btn.active.aira { background:var(--aira); color:#fff; }
+.edit-toggle-btn.active.yukari { background:var(--yukari); color:#fff; }
+.edit-toggle-btn.active.kyoyu { background:var(--kyoyu); color:#fff; }
+.edit-inputs { display:flex; gap:7px; }
+.edit-inputs input { flex:1; padding:8px 10px; border:1px solid var(--border2); border-radius:6px; font-size:13px; background:var(--surface); color:var(--text); outline:none; }
+.edit-actions { display:flex; gap:7px; }
+.edit-save { flex:1; padding:8px; background:var(--pink); color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; }
+.edit-cancel { padding:8px 14px; background:var(--surface); border:1px solid var(--border2); border-radius:6px; font-size:13px; cursor:pointer; color:var(--text2); }
+.toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+  background:var(--text); color:var(--bg); padding:10px 20px; border-radius:24px;
+  font-size:13px; font-weight:500; transition:transform 0.3s ease; z-index:999; white-space:nowrap;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="main-screen">
+  <div class="app-header">
+    <div class="header-top">
+      <div>
+        <div class="app-title">家計簿</div>
+        <div class="app-year" id="year-label"></div>
+      </div>
+      <div class="sync-btn">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">同期中</span>
+      </div>
+    </div>
+    <div class="month-scroll" id="month-tabs"></div>
+  </div>
+  <div class="content">
+    <div id="carryover-wrap"></div>
+    <div class="summary-row">
+      <div class="sum-card"><div class="sum-label">入金合計</div><div class="sum-value income" id="sum-inc">¥0</div></div>
+      <div class="sum-card"><div class="sum-label">出費合計</div><div class="sum-value expense" id="sum-exp">¥0</div></div>
+      <div class="sum-card"><div class="sum-label">残高</div><div class="sum-value" id="sum-bal">¥0</div></div>
+    </div>
+    <div class="calendar" id="calendar-wrap"></div>
+    <div id="day-panel-wrap"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const DB_URL='https://kanekannri-default-rtdb.asia-southeast1.firebasedatabase.app';
+const ROOM_ID='a';
+const MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const DOWS=['日','月','火','水','木','金','土'];
+const PAYERS=[
+  {id:'aira',  label:'あいら',cls:'aira',  color:'var(--aira)'},
+  {id:'yukari',label:'ゆかり',cls:'yukari',color:'var(--yukari)'},
+  {id:'kyoyu', label:'共有',  cls:'kyoyu', color:'var(--kyoyu)'},
+];
+const fmt=n=>Math.round(n).toLocaleString('ja-JP');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+let entries=[],selMonth=new Date().getMonth(),selYear=new Date().getFullYear();
+let selDay=null,editId=null,formType='expense',formPayer='aira',lastHash='';
+
+const dbPath=()=>`${DB_URL}/rooms/${ROOM_ID}/entries.json`;
+const entryPath=id=>`${DB_URL}/rooms/${ROOM_ID}/entries/${id}.json`;
+
+async function fetchEntries(){
+  setSyncState('syncing');
+  try{
+    const r=await fetch(dbPath());
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    entries=d?Object.values(d):[];
+    lastHash=entries.length+'';
+    setSyncState('ok');
+  }catch{setSyncState('error');}
+}
+async function pushEntry(e){
+  setSyncState('syncing');
+  try{await fetch(entryPath(e.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(e)});setSyncState('ok');showToast('追加しました ✓');}
+  catch{setSyncState('error');showToast('保存に失敗しました');}
+}
+async function updateEntry(e){
+  setSyncState('syncing');
+  try{await fetch(entryPath(e.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(e)});setSyncState('ok');showToast('更新しました ✓');}
+  catch{setSyncState('error');showToast('更新に失敗しました');}
+}
+async function removeEntry(id){
+  setSyncState('syncing');
+  try{await fetch(entryPath(id),{method:'DELETE'});setSyncState('ok');showToast('削除しました');}
+  catch{setSyncState('error');}
+}
+async function pollUpdates(){
+  try{
+    const r=await fetch(dbPath());
+    if(!r.ok)return;
+    const d=await r.json();
+    const ne=d?Object.values(d):[];
+    const h=ne.length+'';
+    if(h!==lastHash){entries=ne;lastHash=h;render();}
+  }catch{}
+}
+function setSyncState(s){
+  const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label');
+  dot.className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' error':'');
+  lbl.textContent=s==='syncing'?'同期中':s==='error'?'エラー':'同期済み';
+}
+
+const monthEntries=()=>entries.filter(e=>e.year===selYear&&e.month===selMonth);
+const dayEntries=d=>entries.filter(e=>e.year===selYear&&e.month===selMonth&&e.day===d);
+
+function calcCarryover(){
+  const prev=entries.filter(e=>e.year<selYear||(e.year===selYear&&e.month<selMonth));
+  const inc=prev.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const exp=prev.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  return inc-exp;
+}
+
+window.addEventListener('load',async()=>{
+  document.getElementById('year-label').textContent=selYear+'年';
+  await fetchEntries();
+  render();
+  setInterval(pollUpdates,5000);
+});
+
+function render(){
+  renderMonthTabs();renderSummary();renderCalendar();renderDayPanel();
+}
+
+function renderMonthTabs(){
+  const c=document.getElementById('month-tabs');
+  c.innerHTML=MONTHS.map((m,i)=>`<button class="month-tab${i===selMonth?' active':''}" onclick="changeMonth(${i})">${m}</button>`).join('');
+  requestAnimationFrame(()=>c.querySelector('.month-tab.active')?.scrollIntoView({inline:'center',block:'nearest'}));
+}
+function changeMonth(m){selMonth=m;selDay=null;editId=null;render();}
+
+function renderSummary(){
+  const me=monthEntries();
+  const inc=me.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const exp=me.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const co=calcCarryover();
+  const totalInc=inc+(co>0?co:0);
+  const bal=totalInc-exp;
+  document.getElementById('sum-inc').textContent='¥'+fmt(totalInc);
+  document.getElementById('sum-exp').textContent='¥'+fmt(exp);
+  const balEl=document.getElementById('sum-bal');
+  balEl.textContent='¥'+fmt(bal);
+  balEl.className='sum-value '+(bal>=0?'positive':'negative');
+  const cw=document.getElementById('carryover-wrap');
+  if(co!==0){
+    const sign=co>0?'+':'';
+    cw.innerHTML=`<div class="carryover-badge"><span>↩</span><span>前月からの繰り越し：<strong>${sign}¥${fmt(co)}</strong>　入金合計に含まれています</span></div>`;
+  }else{cw.innerHTML='';}
+}
+
+function renderCalendar(){
+  const today=new Date();
+  const isCurr=today.getFullYear()===selYear&&today.getMonth()===selMonth;
+  const firstDay=new Date(selYear,selMonth,1).getDay();
+  const lastDate=new Date(selYear,selMonth+1,0).getDate();
+  let cells='';
+  for(let i=0;i<firstDay;i++)cells+=`<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=lastDate;d++){
+    const dow=(firstDay+d-1)%7;
+    const isToday=isCurr&&today.getDate()===d;
+    const de=dayEntries(d);
+    const dayInc=de.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const dayExp=de.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    const dots=[...new Set(de.filter(e=>e.type==='expense').map(e=>e.payer||'aira'))]
+      .map(p=>{const pay=PAYERS.find(x=>x.id===p)||PAYERS[0];return`<div class="payer-dot" style="background:${pay.color}"></div>`;}).join('');
+    cells+=`<div class="cal-cell${selDay===d?' selected':''}" onclick="selectDay(${d})">
+      <div class="cal-day-num${dow===0?' sun':dow===6?' sat':''}${isToday?' today':''}">${d}</div>
+      ${dayInc>0?`<div class="cal-inc">+¥${fmt(dayInc)}</div>`:''}
+      ${dayExp>0?`<div class="cal-exp">-¥${fmt(dayExp)}</div>`:''}
+      ${dots?`<div class="cal-payers">${dots}</div>`:''}
+    </div>`;
+  }
+  document.getElementById('calendar-wrap').innerHTML=`
+    <div class="cal-month-title"><span>${selYear}年${selMonth+1}月</span><span style="font-size:11px;color:var(--text3)">日付をタップして記録</span></div>
+    <div class="cal-dows">${DOWS.map((d,i)=>`<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}</div>
+    <div class="cal-grid">${cells}</div>`;
+}
+
+function selectDay(d){
+  selDay=selDay===d?null:d;editId=null;formType='expense';formPayer='aira';render();
+  if(selDay!==null)setTimeout(()=>document.getElementById('day-panel-wrap')?.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+
+function renderDayPanel(){
+  const wrap=document.getElementById('day-panel-wrap');
+  if(selDay===null){wrap.innerHTML='';return;}
+  const de=dayEntries(selDay);
+  const entriesHtml=de.length===0?`<div class="entry-empty">この日の記録はまだありません</div>`:
+    de.map(e=>{
+      const pay=PAYERS.find(x=>x.id===(e.payer||'aira'))||PAYERS[0];
+      if(editId===e.id){
+        return`<div class="edit-inline">
+          <div class="edit-toggle-row">
+            <button class="edit-toggle-btn${e.type==='income'?' active income':''}" onclick="setEditField('${e.id}','type','income')">入金</button>
+            <button class="edit-toggle-btn${e.type==='expense'?' active expense':''}" onclick="setEditField('${e.id}','type','expense')">出費</button>
+          </div>
+          <div class="edit-toggle-row">
+            ${PAYERS.map(p=>`<button class="edit-toggle-btn${(e.payer||'aira')===p.id?' active '+p.cls:''}" onclick="setEditField('${e.id}','payer','${p.id}')">${p.label}</button>`).join('')}
+          </div>
+          <div class="edit-inputs">
+            <input type="number" id="ea-${e.id}" value="${e.amount}" placeholder="金額" inputmode="numeric">
+            <input type="text" id="ec-${e.id}" value="${e.content}" placeholder="内容">
+          </div>
+          <div class="edit-actions">
+            <button class="edit-save" onclick="saveEdit('${e.id}')">保存</button>
+            <button class="edit-cancel" onclick="editId=null;render()">キャンセル</button>
+          </div>
+        </div>`;
+      }
+      return`<div class="entry-item">
+        <div class="entry-bar ${e.type}"></div>
+        <div class="entry-body">
+          <div class="entry-content">${e.content||'（内容なし）'}</div>
+          <div class="entry-meta">
+            <span class="entry-type-label">${e.type==='income'?'入金':'出費'}</span>
+            <span class="payer-badge ${pay.cls}">${pay.label}</span>
+          </div>
+        </div>
+        <div class="entry-amount ${e.type}">${e.type==='income'?'+':'-'}¥${fmt(e.amount)}</div>
+        <div class="entry-btns">
+          <button class="entry-btn" onclick="startEdit('${e.id}')">✎</button>
+          <button class="entry-btn del" onclick="deleteEntry('${e.id}')">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+
+  wrap.innerHTML=`<div class="day-panel">
+    <div class="panel-header">
+      <div class="panel-title">${selMonth+1}月${selDay}日</div>
+      <button class="panel-close" onclick="selDay=null;render()">×</button>
+    </div>
+    <div class="add-form">
+      <div class="form-title">新しく記録を追加</div>
+      <div class="type-toggle">
+        <button class="type-btn${formType==='income'?' active income':''}" onclick="formType='income';render()">入金</button>
+        <button class="type-btn${formType==='expense'?' active expense':''}" onclick="formType='expense';render()">出費</button>
+      </div>
+      <div class="payer-selector">
+        ${PAYERS.map(p=>`<button class="payer-btn${formPayer===p.id?' active '+p.cls:''}" onclick="formPayer='${p.id}';render()">${p.label}</button>`).join('')}
+      </div>
+      <div class="form-inputs">
+        <input type="number" id="f-amt" placeholder="金額（円）" inputmode="numeric">
+        <input type="text" id="f-cnt" placeholder="内容（例：ランチ、映画）">
+        <button class="submit-btn" onclick="addEntry()">追加する ＋</button>
+      </div>
+    </div>
+    <div class="entry-list">${entriesHtml}</div>
+  </div>`;
+}
+
+async function addEntry(){
+  const amt=parseInt(document.getElementById('f-amt')?.value||'0');
+  const cnt=document.getElementById('f-cnt')?.value?.trim()||'';
+  if(!amt||amt<=0){showToast('金額を入力してください');return;}
+  const entry={id:uid(),year:selYear,month:selMonth,day:selDay,type:formType,payer:formPayer,amount:amt,content:cnt,createdAt:new Date().toISOString()};
+  entries.push(entry);render();
+  await pushEntry(entry);
+}
+function startEdit(id){editId=id;render();}
+function setEditField(id,field,val){
+  const e=entries.find(x=>x.id===id);
+  if(e){e[field]=val;editId=id;render();}
+}
+async function saveEdit(id){
+  const e=entries.find(x=>x.id===id);if(!e)return;
+  const amt=parseInt(document.getElementById(`ea-${id}`)?.value||'0');
+  const cnt=document.getElementById(`ec-${id}`)?.value?.trim()||'';
+  if(!amt||amt<=0){showToast('金額を入力してください');return;}
+  e.amount=amt;e.content=cnt;editId=null;render();
+  await updateEntry(e);
+}
+async function deleteEntry(id){
+  if(!confirm('この記録を削除しますか？'))return;
+  entries=entries.filter(e=>e.id!==id);render();
+  await removeEntry(id);
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+</script>
+</body>
+</html>
