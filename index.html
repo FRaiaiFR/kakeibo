@@ -21,7 +21,7 @@
   --text:#F0EDE8;--text2:#9E9890;--text3:#5E5A55;
 }}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:48px}
+body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:48px;overflow-x:hidden;max-width:100vw}
 .app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 18px 0;position:sticky;top:0;z-index:100}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .app-title{font-size:18px;font-weight:700}
@@ -68,8 +68,10 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
 .rank-date-main{font-size:13px;font-weight:600;color:var(--text)}
 .rank-date-sub{font-size:11px;color:var(--text3);margin-top:2px}
 .rank-amt{font-size:14px;font-weight:700;color:var(--pink)}
-.month-tab{flex-shrink:0;padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s}
+.month-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;padding:10px 0 12px}
+.month-tab{padding:6px 0;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;transition:all .15s;text-align:center;width:100%}
 .month-tab.active{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:600}
+.tag-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-top:3px}
 .content{padding:14px 14px 0}
 .summary-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
 .sum-card{background:var(--surface);border-radius:var(--rsm);border:1px solid var(--border);padding:11px 8px;text-align:center}
@@ -176,7 +178,7 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
     <button class="nav-tab" onclick="switchPage('annual')">📆 年間</button>
     <button class="nav-tab" onclick="switchPage('ranking')">🏆 ランキング</button>
   </div>
-  <div class="month-scroll" id="month-tabs" style="padding:12px 0 12px"></div>
+  <div class="month-grid" id="month-tabs"></div>
 </div>
 <div id="page-main" class="content">
   <div class="summary-row">
@@ -226,7 +228,7 @@ window.addEventListener('load',async()=>{
 });
 
 function render(){renderTabs();renderSummary();renderCal();renderPanel();}
-function renderTabs(){const c=document.getElementById('month-tabs');c.innerHTML=MONTHS.map((m,i)=>`<button class="month-tab${i===selMonth?' active':''}" onclick="changeMonth(${i})">${m}</button>`).join('');requestAnimationFrame(()=>{const a=c.querySelector('.active');if(a)a.scrollIntoView({inline:'center',block:'nearest'});});}
+function renderTabs(){const c=document.getElementById('month-tabs');c.innerHTML=MONTHS.map((m,i)=>`<button class="month-tab${i===selMonth?' active':''}" onclick="changeMonth(${i})">${m}</button>`).join('');}
 function changeMonth(m){selMonth=m;selDay=null;editId=null;receiptItems=[];if(receiptImgUrl){URL.revokeObjectURL(receiptImgUrl);receiptImgUrl='';}render();}
 function renderSummary(){
   const me=mE();
@@ -258,7 +260,7 @@ function renderPanel(){
   const de=dE(selDay);
   const eHtml=de.length===0?`<div class="entry-empty">この日の記録はまだありません</div>`:de.map(e=>{
     if(editId===e.id)return`<div class="edit-inline"><div class="edit-toggle"><button class="edit-tb${e.type==='income'?' active income':''}" onclick="setET('${e.id}','income')">入金</button><button class="edit-tb${e.type==='expense'?' active expense':''}" onclick="setET('${e.id}','expense')">出費</button></div><div class="edit-inputs"><input type="number" id="ea-${e.id}" value="${e.amount}" inputmode="numeric"><input type="text" id="ec-${e.id}" value="${e.content||''}"></div><div class="edit-actions"><button class="edit-save" onclick="saveEdit('${e.id}')">保存</button><button class="edit-cancel" onclick="editId=null;render()">キャンセル</button></div></div>`;
-    return`<div class="entry-item"><div class="entry-bar ${e.type}"></div><div class="entry-body"><div class="entry-content">${e.content||'（内容なし）'}</div><div class="entry-type">${e.type==='income'?'入金':'出費'}</div></div><div class="entry-amount ${e.type}">${e.type==='income'?'+':'-'}¥${fmt(e.amount)}</div><div class="entry-btns"><button class="entry-btn" onclick="startEdit('${e.id}')">✎</button><button class="entry-btn del" onclick="delEntry('${e.id}')">✕</button></div></div>`;
+    return`<div class="entry-item"><div class="entry-bar ${e.type}"></div><div class="entry-body"><div class="entry-content">${e.content||'（内容なし）'}</div><div style="display:flex;align-items:center;gap:5px">${e.tag?`<span class="tag-badge" style="background:${e.tagColor}22;color:${e.tagColor}">${e.tagIcon||''}${e.tag}</span>`:''}<span class="entry-type">${e.type==='income'?'入金':'出費'}</span></div></div><div class="entry-amount ${e.type}">${e.type==='income'?'+':'-'}¥${fmt(e.amount)}</div><div class="entry-btns"><button class="entry-btn" onclick="startEdit('${e.id}')">✎</button><button class="entry-btn del" onclick="delEntry('${e.id}')">✕</button></div></div>`;
   }).join('');
 
   let rSection='';
@@ -278,13 +280,41 @@ function renderPanel(){
   wrap.innerHTML=`<div class="day-panel"><div class="panel-hd"><div class="panel-title">${selMonth+1}月${selDay}日</div><button class="panel-close" onclick="selDay=null;render()">×</button></div>${rSection}<div class="add-form"><div class="form-label">新しく記録を追加</div><div class="type-toggle"><button class="type-btn${formType==='income'?' active income':''}" onclick="formType='income';render()">入金</button><button class="type-btn${formType==='expense'?' active expense':''}" onclick="formType='expense';render()">出費</button></div><div class="form-inputs"><input type="number" id="f-amt" placeholder="金額（円）" inputmode="numeric"><input type="text" id="f-cnt" placeholder="内容（例：ランチ、映画）"><button class="submit-btn" onclick="addEntry()">追加する ＋</button><button class="receipt-btn" onclick="document.getElementById('ri').click()">📷 レシートを撮影して入力</button><input type="file" id="ri" accept="image/*" capture="environment" style="display:none" onchange="handleReceipt(this)"></div></div><div class="entry-list">${eHtml}</div></div>`;
 }
 
+// ─── AUTO TAG ───
+const TAG_RULES=[
+  {tag:'コンビニ',icon:'🏪',color:'#3B82F6',kw:['セブン','ファミマ','ローソン','ミニストップ','デイリー','コンビニ','7-eleven','7eleven']},
+  {tag:'映画',icon:'🎬',color:'#8B5CF6',kw:['映画','シネマ','cinema','movie','tohoシネマ','イオンシネマ','映画館']},
+  {tag:'お昼',icon:'🍱',color:'#F59E0B',kw:['お昼','ランチ','昼食','昼ごはん','ひるごはん','ランチ代']},
+  {tag:'夕飯',icon:'🍽️',color:'#EF4444',kw:['夕飯','夕食','晩ごはん','ディナー','夜ごはん','夕ご飯','晩飯']},
+  {tag:'デザート',icon:'🍰',color:'#EC4899',kw:['デザート','スイーツ','ケーキ','アイス','パフェ','プリン','チョコ','和菓子','クレープ','タピオカ']},
+  {tag:'カフェ',icon:'☕',color:'#92400E',kw:['カフェ','コーヒー','スタバ','スターバックス','ドトール','タリーズ','珈琲','喫茶']},
+  {tag:'外食',icon:'🍜',color:'#F97316',kw:['外食','ご飯','定食','ラーメン','寿司','焼肉','居酒屋','ファミレス','マック','吉野家','すき家','ガスト','ファスト','うどん','そば','パスタ']},
+  {tag:'スーパー',icon:'🛒',color:'#10B981',kw:['スーパー','イオン','ドンキ','ドン・キホーテ','業務スーパー','食料品','食材','西友','ライフ','マルエツ']},
+  {tag:'日用品',icon:'🧴',color:'#64748B',kw:['ドラッグ','マツキヨ','ウエルシア','日用品','シャンプー','洗剤','トイレ','消耗品']},
+  {tag:'交通',icon:'🚃',color:'#6366F1',kw:['電車','バス','タクシー','交通費','新幹線','地下鉄','suica','ic','定期']},
+  {tag:'デート',icon:'💕',color:'#D4537E',kw:['デート','水族館','遊園地','動物園','テーマパーク','ディズニー','ユニバ','観光']},
+  {tag:'朝食',icon:'🌅',color:'#FCD34D',kw:['朝食','朝ごはん','モーニング','朝飯']},
+];
+function autoTag(content){
+  if(!content)return null;
+  const lower=content.toLowerCase();
+  for(const rule of TAG_RULES){
+    for(const kw of rule.kw){
+      if(lower.includes(kw.toLowerCase()))return{tag:rule.tag,icon:rule.icon,color:rule.color};
+    }
+  }
+  return null;
+}
+
 // Entry actions
 async function addEntry(){
   const amt=parseInt(document.getElementById('f-amt')?.value||'0');
   const cnt=document.getElementById('f-cnt')?.value?.trim()||'';
   if(!amt||amt<=0){showToast('金額を入力してください');return;}
-  const e={id:uid(),year:selYear,month:selMonth,day:selDay,type:formType,amount:amt,content:cnt,createdAt:new Date().toISOString()};
-  entries.push(e);lastLen=entries.length;render();await pushEntry(e);showToast('追加しました ✓');
+  const tagInfo=autoTag(cnt);
+  const e={id:uid(),year:selYear,month:selMonth,day:selDay,type:formType,amount:amt,content:cnt,tag:tagInfo?.tag||null,tagColor:tagInfo?.color||null,tagIcon:tagInfo?.icon||null,createdAt:new Date().toISOString()};
+  entries.push(e);lastLen=entries.length;render();await pushEntry(e);
+  showToast(tagInfo?`追加しました ✓ [${tagInfo.icon}${tagInfo.tag}]`:'追加しました ✓');
 }
 function startEdit(id){editId=id;render();}
 function setET(id,type){const e=entries.find(x=>x.id===id);if(e){e.type=type;render();editId=id;}}
@@ -466,11 +496,13 @@ function renderGraph(){
       </div>
     </div>`).join('');
 
-  // 今月の出費円グラフ（SVG）
+  // 今月の出費円グラフ（タグ別）
   const mExp=entries.filter(e=>e.year===selYear&&e.month===selMonth&&e.type==='expense');
-  // 内容でグループ化
   const groups={};
-  mExp.forEach(e=>{const k=e.content||'その他';groups[k]=(groups[k]||0)+e.amount;});
+  mExp.forEach(e=>{
+    const k=e.tag||(autoTag(e.content)?.tag)||'その他';
+    groups[k]=(groups[k]||0)+e.amount;
+  });
   const sorted=Object.entries(groups).sort((a,b)=>b[1]-a[1]).slice(0,7);
   const total=sorted.reduce((s,[,v])=>s+v,0)||1;
   let pieHtml='<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px 0">今月の出費データなし</div>';
