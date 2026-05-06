@@ -273,16 +273,50 @@ async function compressImg(file,maxPx){
 
 function parseLines(lines){
   const out=[];
-  const skip=/合計|小計|税|割引|値引|ポイント|おつり|お釣|total|subtotal|tax|discount|change/i;
-  const priceRe=/[¥￥]?\s*([0-9][0-9,，]*)\s*(?:円|$)/;
+  // 除外ワード（合計・電話・レジ・日付など）
+  const skip=/合計|小計|税|割引|値引|ポイント|おつり|お釣|お預|預かり|釣り|total|subtotal|tax|discount|change|tel|電話|レジ|登録|バーコード|barcode|ありがとう|thank|shop|store|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}|^\s*[-=＝\*\*\*]+\s*$/i;
+
   for(const line of lines){
-    const l=line.trim();if(!l||skip.test(l))continue;
-    const m=l.match(priceRe);if(!m)continue;
-    const amt=parseInt(m[1].replace(/[,，]/g,''));
+    const l=line.trim();
+    if(!l||l.length<2)continue;
+    if(skip.test(l))continue;
+
+    // ¥マーク付きの価格を優先して探す
+    const yenRe=/[¥￥]\s*([0-9][0-9,，]*)/g;
+    const yenMatches=[...l.matchAll(yenRe)];
+
+    let amt=0, matchStr='';
+    if(yenMatches.length>0){
+      // 最後の¥価格を使う（右端に価格があることが多い）
+      const last=yenMatches[yenMatches.length-1];
+      amt=parseInt(last[1].replace(/[,，]/g,''));
+      matchStr=last[0];
+    } else {
+      // ¥なしの場合：行末の数字を価格として扱う
+      const numRe=/\s([0-9][0-9,，]{1,6})\s*$/;
+      const m=l.match(numRe);
+      if(!m)continue;
+      amt=parseInt(m[1].replace(/[,，]/g,''));
+      matchStr=m[0];
+    }
+
+    // 価格の妥当性チェック（1円〜99999円）
     if(isNaN(amt)||amt<=0||amt>99999)continue;
-    let name=l.slice(0,l.lastIndexOf(m[0])).replace(/[¥￥\s|｜\-－…・]+$/,'').trim();
-    if(!name||name.length<1)continue;
+
+    // 品目名：価格部分を除いた残り
+    let name=l;
+    if(matchStr){
+      const idx=l.lastIndexOf(matchStr);
+      if(idx>0)name=l.slice(0,idx);
+    }
+    // 記号・空白・数字だけの行はスキップ
+    name=name.replace(/[¥￥\s\|｜\-－…・。、\*]+$/,'').trim();
+    // 数字や記号だけになった場合はスキップ
+    if(!name||name.length<1||/^[\d\s\W]+$/.test(name))continue;
+    // 電話番号っぽい（数字が多い）はスキップ
+    if((name.match(/\d/g)||[]).length>5)continue;
     if(name.length>25)name=name.slice(0,25);
+
     out.push({name,amount:amt});
   }
   return out;
