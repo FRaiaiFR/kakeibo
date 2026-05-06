@@ -31,8 +31,43 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
 .sync-dot.syncing{background:#F59E0B;animation:pulse 1s infinite}
 .sync-dot.error{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.month-scroll{display:flex;gap:4px;overflow-x:auto;padding:0 0 12px;scrollbar-width:none}
-.month-scroll::-webkit-scrollbar{display:none}
+.nav-tabs{display:flex;gap:2px;margin-bottom:0;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{flex-shrink:0;padding:9px 14px;font-size:13px;font-weight:600;color:var(--text2);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.nav-tab.active{color:var(--pink);border-bottom-color:var(--pink)}
+/* Graph page */
+.page{padding:14px 14px 0}
+.page-title{font-size:15px;font-weight:700;margin-bottom:14px;color:var(--text)}
+.card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:16px;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:14px}
+.chart-wrap{width:100%;overflow:hidden}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bar-label{font-size:11px;color:var(--text2);width:26px;flex-shrink:0;text-align:right}
+.bar-bg{flex:1;background:var(--surface2);border-radius:4px;height:18px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.bar-val{font-size:11px;color:var(--text2);width:60px;flex-shrink:0;text-align:right}
+.pie-wrap{display:flex;align-items:center;gap:16px}
+.pie-legend{flex:1;display:flex;flex-direction:column;gap:6px}
+.pie-leg-row{display:flex;align-items:center;gap:7px;font-size:12px}
+.pie-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+/* Annual page */
+.annual-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.annual-row:last-child{border-bottom:none}
+.annual-month{font-size:13px;font-weight:600;color:var(--text)}
+.annual-vals{display:flex;gap:14px}
+.annual-val{font-size:12px;text-align:right}
+.annual-val span{display:block;font-size:10px;color:var(--text3);margin-bottom:1px}
+/* Ranking page */
+.rank-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.rank-row:last-child{border-bottom:none}
+.rank-num{font-size:18px;font-weight:700;color:var(--text3);width:28px;flex-shrink:0;text-align:center}
+.rank-num.gold{color:#F59E0B}
+.rank-num.silver{color:#9CA3AF}
+.rank-num.bronze{color:#CD7C3A}
+.rank-date{flex:1}
+.rank-date-main{font-size:13px;font-weight:600;color:var(--text)}
+.rank-date-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.rank-amt{font-size:14px;font-weight:700;color:var(--pink)}
 .month-tab{flex-shrink:0;padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s}
 .month-tab.active{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:600}
 .content{padding:14px 14px 0}
@@ -135,9 +170,15 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
     <div><div class="app-title">家計簿</div><div class="app-year" id="year-label"></div></div>
     <div class="sync-btn"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">同期中</span></div>
   </div>
-  <div class="month-scroll" id="month-tabs"></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchPage('main')">📅 家計簿</button>
+    <button class="nav-tab" onclick="switchPage('graph')">📊 グラフ</button>
+    <button class="nav-tab" onclick="switchPage('annual')">📆 年間</button>
+    <button class="nav-tab" onclick="switchPage('ranking')">🏆 ランキング</button>
+  </div>
+  <div class="month-scroll" id="month-tabs" style="padding:12px 0 12px"></div>
 </div>
-<div class="content">
+<div id="page-main" class="content">
   <div class="summary-row">
     <div class="sum-card"><div class="sum-label">入金合計</div><div class="sum-value income" id="sum-inc">¥0</div></div>
     <div class="sum-card"><div class="sum-label">出費合計</div><div class="sum-value expense" id="sum-exp">¥0</div></div>
@@ -147,6 +188,9 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
   <div class="calendar" id="cal"></div>
   <div id="day-panel"></div>
 </div>
+<div id="page-graph" class="page" style="display:none"></div>
+<div id="page-annual" class="page" style="display:none"></div>
+<div id="page-ranking" class="page" style="display:none"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -379,6 +423,152 @@ async function confirmReceipt(){
     entries.push(e);await pushEntry(e);
   }
   lastLen=entries.length;render();showToast(`${toAdd.length}件追加しました ✓`);
+}
+
+// ─── PAGE SWITCHING ───
+let currentPage='main';
+function switchPage(page){
+  currentPage=page;
+  ['main','graph','annual','ranking'].forEach(p=>{
+    document.getElementById('page-'+p).style.display=p===page?'':'none';
+  });
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>{
+    t.classList.toggle('active',['main','graph','annual','ranking'][i]===page);
+  });
+  document.getElementById('month-tabs').style.display=page==='main'?'flex':'none';
+  if(page==='graph')renderGraph();
+  if(page==='annual')renderAnnual();
+  if(page==='ranking')renderRanking();
+}
+
+// ─── GRAPH PAGE ───
+const PIE_COLORS=['#D4537E','#1D9E75','#F59E0B','#6366F1','#EC4899','#14B8A6','#F97316','#8B5CF6'];
+function renderGraph(){
+  const el=document.getElementById('page-graph');
+  // 月別出費棒グラフ（今年）
+  const monthData=MONTHS.map((_,m)=>{
+    const exp=entries.filter(e=>e.year===selYear&&e.month===m&&e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    const inc=entries.filter(e=>e.year===selYear&&e.month===m&&e.type==='income').reduce((s,e)=>s+e.amount,0);
+    return{exp,inc};
+  });
+  const maxVal=Math.max(...monthData.map(d=>Math.max(d.exp,d.inc)),1);
+
+  const barRows=monthData.map((d,i)=>`
+    <div class="bar-row">
+      <div class="bar-label">${i+1}月</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+        ${d.exp>0?`<div class="bar-bg"><div class="bar-fill" style="width:${Math.round(d.exp/maxVal*100)}%;background:var(--pink)"></div></div>`:''}
+        ${d.inc>0?`<div class="bar-bg"><div class="bar-fill" style="width:${Math.round(d.inc/maxVal*100)}%;background:var(--green)"></div></div>`:''}
+      </div>
+      <div style="font-size:11px;color:var(--text2);text-align:right;min-width:52px">
+        ${d.exp>0?`<div style="color:var(--pink)">-¥${fmt(d.exp)}</div>`:''}
+        ${d.inc>0?`<div style="color:var(--green)">+¥${fmt(d.inc)}</div>`:''}
+      </div>
+    </div>`).join('');
+
+  // 今月の出費円グラフ（SVG）
+  const mExp=entries.filter(e=>e.year===selYear&&e.month===selMonth&&e.type==='expense');
+  // 内容でグループ化
+  const groups={};
+  mExp.forEach(e=>{const k=e.content||'その他';groups[k]=(groups[k]||0)+e.amount;});
+  const sorted=Object.entries(groups).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const total=sorted.reduce((s,[,v])=>s+v,0)||1;
+  let pieHtml='<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px 0">今月の出費データなし</div>';
+  if(sorted.length>0){
+    let startAngle=-Math.PI/2;
+    let slices='';
+    sorted.forEach(([name,val],i)=>{
+      const ratio=val/total;
+      const endAngle=startAngle+ratio*2*Math.PI;
+      const x1=50+40*Math.cos(startAngle),y1=50+40*Math.sin(startAngle);
+      const x2=50+40*Math.cos(endAngle),y2=50+40*Math.sin(endAngle);
+      const large=ratio>0.5?1:0;
+      slices+=`<path d="M50,50 L${x1},${y1} A40,40 0 ${large},1 ${x2},${y2} Z" fill="${PIE_COLORS[i%PIE_COLORS.length]}" stroke="var(--surface)" stroke-width="1"/>`;
+      startAngle=endAngle;
+    });
+    const legend=sorted.map(([name,val],i)=>`<div class="pie-leg-row"><div class="pie-leg-dot" style="background:${PIE_COLORS[i%PIE_COLORS.length]}"></div><span style="flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span><span style="color:var(--text2);font-size:11px">¥${fmt(val)}</span></div>`).join('');
+    pieHtml=`<div class="pie-wrap"><svg viewBox="0 0 100 100" width="120" height="120" style="flex-shrink:0"><circle cx="50" cy="50" r="40" fill="var(--surface2)"/>${slices}</svg><div class="pie-legend">${legend}</div></div>`;
+  }
+
+  el.innerHTML=`
+    <div class="page-title">${selYear}年 グラフ</div>
+    <div class="card">
+      <div class="card-title">月別 入金・出費（棒グラフ）</div>
+      <div class="chart-wrap">${barRows}</div>
+      <div style="display:flex;gap:12px;margin-top:10px;font-size:11px">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--pink);border-radius:2px;display:inline-block"></span>出費</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block"></span>入金</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">${selMonth+1}月の出費内訳（円グラフ）</div>
+      ${pieHtml}
+    </div>`;
+}
+
+// ─── ANNUAL PAGE ───
+function renderAnnual(){
+  const el=document.getElementById('page-annual');
+  const totalInc=entries.filter(e=>e.year===selYear&&e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const totalExp=entries.filter(e=>e.year===selYear&&e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const rows=MONTHS.map((_,m)=>{
+    const inc=entries.filter(e=>e.year===selYear&&e.month===m&&e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const exp=entries.filter(e=>e.year===selYear&&e.month===m&&e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    if(inc===0&&exp===0)return'';
+    const bal=inc-exp;
+    return`<div class="annual-row">
+      <div class="annual-month">${m+1}月</div>
+      <div class="annual-vals">
+        <div class="annual-val"><span>入金</span><span style="color:var(--green)">+¥${fmt(inc)}</span></div>
+        <div class="annual-val"><span>出費</span><span style="color:var(--pink)">-¥${fmt(exp)}</span></div>
+        <div class="annual-val"><span>収支</span><span style="color:${bal>=0?'var(--green)':'var(--red)'}">${bal>=0?'+':''}¥${fmt(bal)}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`
+    <div class="page-title">${selYear}年 年間まとめ</div>
+    <div class="summary-row" style="margin-bottom:14px">
+      <div class="sum-card"><div class="sum-label">年間入金</div><div class="sum-value income">¥${fmt(totalInc)}</div></div>
+      <div class="sum-card"><div class="sum-label">年間出費</div><div class="sum-value expense">¥${fmt(totalExp)}</div></div>
+      <div class="sum-card"><div class="sum-label">年間収支</div><div class="sum-value ${totalInc-totalExp>=0?'positive':'negative'}">${totalInc-totalExp>=0?'+':''}¥${fmt(totalInc-totalExp)}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">月別内訳</div>
+      ${rows||'<div style="text-align:center;padding:20px;font-size:13px;color:var(--text3)">データがありません</div>'}
+    </div>`;
+}
+
+// ─── RANKING PAGE ───
+function renderRanking(){
+  const el=document.getElementById('page-ranking');
+  // 日別に出費を集計
+  const dayMap={};
+  entries.filter(e=>e.type==='expense').forEach(e=>{
+    const key=`${e.year}-${String(e.month+1).padStart(2,'0')}-${String(e.day).padStart(2,'0')}`;
+    if(!dayMap[key])dayMap[key]={year:e.year,month:e.month,day:e.day,total:0,count:0};
+    dayMap[key].total+=e.amount;
+    dayMap[key].count++;
+  });
+  const sorted=Object.values(dayMap).sort((a,b)=>b.total-a.total).slice(0,10);
+  const medals=['🥇','🥈','🥉'];
+  const rows=sorted.length===0
+    ?'<div style="text-align:center;padding:20px;font-size:13px;color:var(--text3)">データがありません</div>'
+    :sorted.map((d,i)=>`<div class="rank-row">
+      <div class="rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i<3?medals[i]:i+1}</div>
+      <div class="rank-date">
+        <div class="rank-date-main">${d.year}年${d.month+1}月${d.day}日</div>
+        <div class="rank-date-sub">${d.count}件の出費</div>
+      </div>
+      <div class="rank-amt">¥${fmt(d.total)}</div>
+    </div>`).join('');
+
+  el.innerHTML=`
+    <div class="page-title">出費の多い日 ランキング</div>
+    <div class="card">
+      <div class="card-title">全期間 TOP10</div>
+      ${rows}
+    </div>`;
 }
 
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
