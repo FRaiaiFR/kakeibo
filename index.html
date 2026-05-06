@@ -21,15 +21,16 @@ html.dark{
   --text:#ECEAE6;--text2:#8A8480;--text3:#4A4845;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{transition:background .35s,color .35s}
-body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:48px;overflow-x:hidden;max-width:100vw;transition:background .35s,color .35s}
+html{height:100%;overflow:hidden;transition:background .35s,color .35s}
+body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden;max-width:100vw;transition:background .35s,color .35s}
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;padding-bottom:48px}
 /* トグルスイッチ */
 .theme-toggle{position:relative;display:flex;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border2);border-radius:999px;padding:3px;cursor:pointer;transition:background .35s,border-color .35s;flex-shrink:0}
 .theme-toggle-knob{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;transition:transform .35s cubic-bezier(.34,1.56,.64,1),background .35s;background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.15);position:relative;z-index:1}
 html.dark .theme-toggle-knob{transform:translateX(28px)}
 .theme-toggle-track{position:absolute;left:3px;right:3px;display:flex;align-items:center;justify-content:space-between;pointer-events:none;font-size:12px;padding:0 3px}
 
-.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 18px 0;position:sticky;top:0;z-index:100;transition:background .35s,border-color .35s}
+.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 18px 0;flex-shrink:0;z-index:100;transition:background .35s,border-color .35s}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .header-left{display:flex;flex-direction:column}
 .header-right{display:flex;align-items:center;gap:8px}
@@ -198,6 +199,7 @@ html.dark .theme-toggle-knob{transform:translateX(28px)}
   </div>
   <div class="month-grid" id="month-tabs"></div>
 </div>
+<div class="scroll-area">
 <div id="page-main" class="content">
   <div class="summary-row">
     <div class="sum-card"><div class="sum-label">入金合計</div><div class="sum-value income" id="sum-inc">¥0</div></div>
@@ -211,6 +213,7 @@ html.dark .theme-toggle-knob{transform:translateX(28px)}
 <div id="page-graph" class="page" style="display:none"></div>
 <div id="page-annual" class="page" style="display:none"></div>
 <div id="page-ranking" class="page" style="display:none"></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
