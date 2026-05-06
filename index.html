@@ -109,10 +109,18 @@ html.dark .theme-toggle-knob{transform:translateX(28px)}
 .cal-num.today{background:var(--pink);color:#fff}
 .cal-exp{font-size:10px;color:var(--pink);line-height:1.4}
 .cal-inc{font-size:10px;color:var(--green);line-height:1.4}
-.day-panel{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:14px;overflow:hidden}
-.panel-hd{padding:13px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--pink-l)}
-.panel-title{font-size:15px;font-weight:700;color:var(--pink-d)}
-.panel-close{background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:2px 6px}
+/* ── Bottom Sheet Modal ── */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0);pointer-events:none;transition:background .35s}
+.modal-overlay.open{background:rgba(0,0,0,0.45);pointer-events:all}
+.modal-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:22px 22px 0 0;max-height:88vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);box-shadow:0 -4px 32px rgba(0,0,0,.18)}
+.modal-sheet.open{transform:translateY(0)}
+.modal-handle-wrap{padding:10px 0 4px;display:flex;justify-content:center;flex-shrink:0}
+.modal-handle{width:38px;height:4px;background:var(--border2);border-radius:2px}
+.modal-scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior:none;flex:1}
+.panel-hd{padding:12px 16px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--pink-l);transition:background .35s,border-color .35s;flex-shrink:0}
+.panel-title{font-size:16px;font-weight:700;color:var(--pink-d)}
+.panel-close{background:var(--surface2);border:none;cursor:pointer;color:var(--text2);font-size:14px;padding:5px 10px;border-radius:20px;font-weight:600;transition:background .2s}
+.panel-close:hover{background:var(--border)}
 .add-form{padding:13px 14px;border-bottom:1px solid var(--border)}
 .form-label{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:9px}
 .type-toggle{display:flex;border-radius:var(--rsm);overflow:hidden;border:1px solid var(--border2);margin-bottom:9px}
@@ -208,11 +216,21 @@ html.dark .theme-toggle-knob{transform:translateX(28px)}
   </div>
   <div id="carry-wrap"></div>
   <div class="calendar" id="cal"></div>
-  <div id="day-panel"></div>
 </div>
 <div id="page-graph" class="page" style="display:none"></div>
 <div id="page-annual" class="page" style="display:none"></div>
 <div id="page-ranking" class="page" style="display:none"></div>
+</div>
+<!-- Bottom Sheet Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
+  <div class="modal-sheet" id="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle-wrap"><div class="modal-handle"></div></div>
+    <div class="panel-hd">
+      <div class="panel-title" id="modal-title"></div>
+      <button class="panel-close" onclick="closeModal()">✕ 閉じる</button>
+    </div>
+    <div class="modal-scroll" id="modal-body"></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -295,11 +313,34 @@ function renderCal(){
   }
   document.getElementById('cal').innerHTML=`<div class="cal-title"><span>${selYear}年${selMonth+1}月</span><span style="font-size:11px;color:var(--text3)">日付をタップ</span></div><div class="cal-dows">${DOWS.map((d,i)=>`<div class="cal-dow${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}</div><div class="cal-grid">${cells}</div>`;
 }
-function selectDay(d){selDay=selDay===d?null:d;editId=null;receiptItems=[];if(receiptImgUrl){URL.revokeObjectURL(receiptImgUrl);receiptImgUrl='';}render();if(selDay)setTimeout(()=>document.getElementById('day-panel')?.scrollIntoView({behavior:'smooth',block:'nearest'}),60);}
+function selectDay(d){
+  selDay=d;editId=null;receiptItems=[];
+  if(receiptImgUrl){URL.revokeObjectURL(receiptImgUrl);receiptImgUrl='';}
+  openModal();
+}
+function openModal(){
+  const overlay=document.getElementById('modal-overlay');
+  const sheet=document.getElementById('modal-sheet');
+  document.getElementById('modal-title').textContent=`${selMonth+1}月${selDay}日`;
+  renderPanel();
+  requestAnimationFrame(()=>{
+    overlay.classList.add('open');
+    sheet.classList.add('open');
+  });
+}
+function closeModal(){
+  const overlay=document.getElementById('modal-overlay');
+  const sheet=document.getElementById('modal-sheet');
+  overlay.classList.remove('open');
+  sheet.classList.remove('open');
+  selDay=null;editId=null;receiptItems=[];
+  if(receiptImgUrl){URL.revokeObjectURL(receiptImgUrl);receiptImgUrl='';}
+  renderCal();
+}
 
 function renderPanel(){
-  const wrap=document.getElementById('day-panel');
-  if(!selDay){wrap.innerHTML='';return;}
+  const wrap=document.getElementById('modal-body');
+  if(!wrap)return;
   const de=dE(selDay);
   const eHtml=de.length===0?`<div class="entry-empty">この日の記録はまだありません</div>`:de.map(e=>{
     if(editId===e.id)return`<div class="edit-inline"><div class="edit-toggle"><button class="edit-tb${e.type==='income'?' active income':''}" onclick="setET('${e.id}','income')">入金</button><button class="edit-tb${e.type==='expense'?' active expense':''}" onclick="setET('${e.id}','expense')">出費</button></div><div class="edit-inputs"><input type="number" id="ea-${e.id}" value="${e.amount}" inputmode="numeric"><input type="text" id="ec-${e.id}" value="${e.content||''}"></div><div class="edit-actions"><button class="edit-save" onclick="saveEdit('${e.id}')">保存</button><button class="edit-cancel" onclick="editId=null;render()">キャンセル</button></div></div>`;
@@ -320,7 +361,7 @@ function renderPanel(){
     rSection=`<div class="receipt-box"><div class="receipt-box-title"><span>📄 レシート読み取り結果</span>${!ocrRunning?`<button onclick="receiptItems=[];ocrRunning=false;if(receiptImgUrl){URL.revokeObjectURL(receiptImgUrl);receiptImgUrl='';}render()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px">閉じる</button>`:''}</div>${receiptImgUrl?`<img src="${receiptImgUrl}" class="receipt-img">`:''}${rows}${!ocrRunning?`<div class="r-add-row"><input type="text" id="radd-n" placeholder="品目を追加" style="flex:2"><input type="number" id="radd-a" placeholder="金額" inputmode="numeric" style="width:80px"><button onclick="addRItem()" style="padding:8px 12px;background:var(--pink);color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer">＋</button></div><button class="r-confirm-btn" onclick="confirmReceipt()">チェックした項目を追加する</button><button class="r-cancel-btn" onclick="receiptItems=[];if(receiptImgUrl){URL.revokeObjectURL(receiptImgUrl);receiptImgUrl='';}render()">キャンセル</button>`:''}</div>`;
   }
 
-  wrap.innerHTML=`<div class="day-panel"><div class="panel-hd"><div class="panel-title">${selMonth+1}月${selDay}日</div><button class="panel-close" onclick="selDay=null;render()">×</button></div>${rSection}<div class="add-form"><div class="form-label">新しく記録を追加</div><div class="type-toggle"><button class="type-btn${formType==='income'?' active income':''}" onclick="formType='income';render()">入金</button><button class="type-btn${formType==='expense'?' active expense':''}" onclick="formType='expense';render()">出費</button></div><div class="form-inputs"><input type="number" id="f-amt" placeholder="金額（円）" inputmode="numeric"><input type="text" id="f-cnt" placeholder="内容（例：ランチ、映画）"><button class="submit-btn" onclick="addEntry()">追加する ＋</button><button class="receipt-btn" onclick="document.getElementById('ri').click()">📷 レシートを撮影して入力</button><input type="file" id="ri" accept="image/*" capture="environment" style="display:none" onchange="handleReceipt(this)"></div></div><div class="entry-list">${eHtml}</div></div>`;
+  wrap.innerHTML=`${rSection}<div class="add-form"><div class="form-label">新しく記録を追加</div><div class="type-toggle"><button class="type-btn${formType==='income'?' active income':''}" onclick="formType='income';renderPanel()">入金</button><button class="type-btn${formType==='expense'?' active expense':''}" onclick="formType='expense';renderPanel()">出費</button></div><div class="form-inputs"><input type="number" id="f-amt" placeholder="金額（円）" inputmode="numeric"><input type="text" id="f-cnt" placeholder="内容（例：ランチ、映画）"><button class="submit-btn" onclick="addEntry()">追加する ＋</button><button class="receipt-btn" onclick="document.getElementById('ri').click()">📷 レシートを撮影して入力</button><input type="file" id="ri" accept="image/*" capture="environment" style="display:none" onchange="handleReceipt(this)"></div></div><div class="entry-list">${eHtml}</div>`;
 }
 
 // ─── AUTO TAG ───
@@ -356,21 +397,27 @@ async function addEntry(){
   if(!amt||amt<=0){showToast('金額を入力してください');return;}
   const tagInfo=autoTag(cnt);
   const e={id:uid(),year:selYear,month:selMonth,day:selDay,type:formType,amount:amt,content:cnt,tag:tagInfo?.tag||null,tagColor:tagInfo?.color||null,tagIcon:tagInfo?.icon||null,createdAt:new Date().toISOString()};
-  entries.push(e);lastLen=entries.length;render();await pushEntry(e);
+  entries.push(e);lastLen=entries.length;
+  renderPanel();renderSummary();renderCal();
+  await pushEntry(e);
   showToast(tagInfo?`追加しました ✓ [${tagInfo.icon}${tagInfo.tag}]`:'追加しました ✓');
 }
-function startEdit(id){editId=id;render();}
-function setET(id,type){const e=entries.find(x=>x.id===id);if(e){e.type=type;render();editId=id;}}
+function startEdit(id){editId=id;renderPanel();}
+function setET(id,type){const e=entries.find(x=>x.id===id);if(e){e.type=type;renderPanel();editId=id;}}
 async function saveEdit(id){
   const e=entries.find(x=>x.id===id);if(!e)return;
   const amt=parseInt(document.getElementById(`ea-${id}`)?.value||'0');
   const cnt=document.getElementById(`ec-${id}`)?.value?.trim()||'';
   if(!amt||amt<=0){showToast('金額を入力してください');return;}
-  e.amount=amt;e.content=cnt;editId=null;render();await patchEntry(e);
+  e.amount=amt;e.content=cnt;editId=null;
+  renderPanel();renderSummary();renderCal();
+  await patchEntry(e);
 }
 async function delEntry(id){
   if(!confirm('削除しますか？'))return;
-  entries=entries.filter(e=>e.id!==id);lastLen=entries.length;render();await removeEntry(id);showToast('削除しました');
+  entries=entries.filter(e=>e.id!==id);lastLen=entries.length;
+  renderPanel();renderSummary();renderCal();
+  await removeEntry(id);showToast('削除しました');
 }
 
 // Receipt OCR
@@ -471,20 +518,20 @@ async function handleReceipt(input){
     ocrRunning=false;receiptItems=[];
     showToast('読み取りエラー: '+e.message);
   }
-  render();
+  renderPanel();
 }
 
 function saveREdit(i){
   const n=document.getElementById(`rn-${i}`)?.value?.trim();
   const a=parseInt(document.getElementById(`ra-${i}`)?.value||'0');
   if(n)receiptItems[i].name=n;if(a>0)receiptItems[i].amount=a;
-  receiptItems[i].editing=false;render();
+  receiptItems[i].editing=false;renderPanel();
 }
 function addRItem(){
   const n=document.getElementById('radd-n')?.value?.trim();
   const a=parseInt(document.getElementById('radd-a')?.value||'0');
   if(!n||!a){showToast('品目名と金額を入力してください');return;}
-  receiptItems.push({name:n,amount:a,checked:true,editing:false});render();
+  receiptItems.push({name:n,amount:a,checked:true,editing:false});renderPanel();
 }
 async function confirmReceipt(){
   const toAdd=receiptItems.filter(it=>it.checked&&it.amount>0);
@@ -495,7 +542,7 @@ async function confirmReceipt(){
     const e={id:uid(),year:selYear,month:selMonth,day:selDay,type:formType,amount:item.amount,content:item.name,createdAt:new Date().toISOString()};
     entries.push(e);await pushEntry(e);
   }
-  lastLen=entries.length;render();showToast(`${toAdd.length}件追加しました ✓`);
+  lastLen=entries.length;renderPanel();renderSummary();renderCal();showToast(`${toAdd.length}件追加しました ✓`);
 }
 
 // ─── PAGE SWITCHING ───
