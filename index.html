@@ -24,7 +24,42 @@ html.dark{
 html{height:100%;overflow:hidden;transition:background .35s,color .35s}
 body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden;max-width:100vw;transition:background .35s,color .35s}
 .scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;padding-bottom:48px}
-/* トグルスイッチ */
+/* 夕暮れテーマ */
+html.sunset{
+  --pink:#E8714A;--pink-l:#FDF0EA;--pink-d:#C44E28;
+  --green:#2E9E6A;--red:#D94040;
+  --bg:#FDF4EC;--surface:#FFFFFF;--surface2:#FAF0E6;
+  --border:rgba(180,100,40,0.1);--border2:rgba(180,100,40,0.18);
+  --text:#2C1A0E;--text2:#8C6040;--text3:#C4A080;
+}
+html.dark.sunset{
+  --pink:#F0835A;--pink-l:#2D1A10;--pink-d:#F5A882;
+  --bg:#120D08;--surface:#1E1408;--surface2:#281C10;
+}
+/* AUTOボタン */
+.auto-btn{padding:5px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;transition:all .3s;letter-spacing:.5px}
+.auto-btn.on{background:linear-gradient(135deg,#F59E0B,#EC4899);border-color:transparent;color:#fff;box-shadow:0 2px 8px rgba(236,72,153,.3)}
+/* AIボタン */
+.ai-btn{padding:5px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;transition:all .2s}
+.ai-btn:hover{background:var(--pink-l);border-color:var(--pink);color:var(--pink)}
+/* AI分析パネル */
+.ai-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0);pointer-events:none;transition:background .3s}
+.ai-overlay.open{background:rgba(0,0,0,0.5);pointer-events:all}
+.ai-panel{position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:22px 22px 0 0;padding:0 0 32px;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);box-shadow:0 -4px 32px rgba(0,0,0,.2)}
+.ai-panel.open{transform:translateY(0)}
+.ai-handle{width:38px;height:4px;background:var(--border2);border-radius:2px;margin:12px auto 0}
+.ai-header{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ai-title{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ai-close{background:var(--surface2);border:none;cursor:pointer;padding:5px 12px;border-radius:20px;font-size:12px;color:var(--text2);font-weight:600}
+.ai-body{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.ai-card{background:var(--surface2);border-radius:12px;padding:14px 16px}
+.ai-card-label{font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.ai-card-value{font-size:20px;font-weight:800;color:var(--text)}
+.ai-card-sub{font-size:12px;color:var(--text2);margin-top:4px}
+.ai-insight{background:var(--pink-l);border-radius:12px;padding:14px 16px;border-left:3px solid var(--pink)}
+.ai-insight-text{font-size:13px;color:var(--text);line-height:1.7}
+/* テーマ時刻バッジ */
+.time-badge{font-size:10px;color:var(--text3);margin-top:2px;text-align:center}
 .theme-toggle{position:relative;display:flex;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border2);border-radius:999px;padding:3px;cursor:pointer;transition:background .35s,border-color .35s;flex-shrink:0}
 .theme-toggle-knob{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;transition:transform .35s cubic-bezier(.34,1.56,.64,1),background .35s;background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.15);position:relative;z-index:1}
 html.dark .theme-toggle-knob{transform:translateX(28px)}
@@ -192,6 +227,8 @@ html.dark .theme-toggle-knob{transform:translateX(28px)}
       <div class="app-year" id="year-label"></div>
     </div>
     <div class="header-right">
+      <button class="ai-btn" onclick="openAI()">🤖 AI分析</button>
+      <button class="auto-btn" id="auto-btn" onclick="toggleAuto()">AUTO</button>
       <div class="sync-btn"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">同期中</span></div>
       <div class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">
         <div class="theme-toggle-track"><span>☀️</span><span>🌙</span></div>
@@ -233,6 +270,17 @@ html.dark .theme-toggle-knob{transform:translateX(28px)}
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<!-- AI分析パネル -->
+<div class="ai-overlay" id="ai-overlay" onclick="closeAI()">
+  <div class="ai-panel" id="ai-panel" onclick="event.stopPropagation()">
+    <div class="ai-handle"></div>
+    <div class="ai-header">
+      <div class="ai-title">🤖 AI支出分析</div>
+      <button class="ai-close" onclick="closeAI()">閉じる</button>
+    </div>
+    <div class="ai-body" id="ai-body"></div>
+  </div>
+</div>
 
 <script>
 const DB_URL='https://kanekannri-default-rtdb.asia-southeast1.firebasedatabase.app';
@@ -261,27 +309,157 @@ const dE=d=>entries.filter(e=>e.year===selYear&&e.month===selMonth&&e.day===d);
 function calcCarry(){const prev=entries.filter(e=>e.year<selYear||(e.year===selYear&&e.month<selMonth));return prev.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0)-prev.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);}
 
 // ─── THEME ───
-function applyTheme(dark){
+let autoTimer=null;
+function getTimeTheme(){
+  const h=new Date().getHours();
+  if(h>=5&&h<7)return'sunrise';
+  if(h>=7&&h<17)return'day';
+  if(h>=17&&h<20)return'sunset';
+  return'night';
+}
+function applyTheme(mode){
+  // mode: 'light' | 'dark' | 'sunset' | 'sunrise'
+  const html=document.documentElement;
   const knob=document.getElementById('theme-knob');
-  if(dark){
-    document.documentElement.classList.add('dark');
-    if(knob)knob.textContent='🌙';
-  }else{
-    document.documentElement.classList.remove('dark');
-    if(knob)knob.textContent='☀️';
-  }
+  html.classList.remove('dark','sunset');
+  if(mode==='dark'||mode==='night'){html.classList.add('dark');if(knob)knob.textContent='🌙';}
+  else if(mode==='sunset'){html.classList.add('sunset');if(knob)knob.textContent='🌇';}
+  else if(mode==='sunrise'){if(knob)knob.textContent='🌅';}
+  else{if(knob)knob.textContent='☀️';}
 }
 function toggleTheme(){
+  if(localStorage.getItem('kb_auto')==='on'){
+    // AUTOモード中は手動切替でAUTOをOFF
+    stopAuto();showToast('AUTOモードをOFFにしました');return;
+  }
   const isDark=document.documentElement.classList.contains('dark');
-  applyTheme(!isDark);
-  localStorage.setItem('kb_theme',!isDark?'dark':'light');
+  const saved=isDark?'light':'dark';
+  applyTheme(saved);
+  localStorage.setItem('kb_theme',saved);
+}
+function runAutoTheme(){
+  const mode=getTimeTheme();
+  applyTheme(mode);
+  const labels={sunrise:'🌅 夜明け',day:'☀️ 昼',sunset:'🌇 夕暮れ',night:'🌙 夜'};
+  document.getElementById('auto-btn').title=labels[mode]||'';
+}
+function startAuto(){
+  localStorage.setItem('kb_auto','on');
+  document.getElementById('auto-btn').classList.add('on');
+  document.getElementById('auto-btn').textContent='AUTO ✦';
+  runAutoTheme();
+  autoTimer=setInterval(runAutoTheme,60000);
+  showToast('AUTOモード ON — 時刻でテーマが変わります');
+}
+function stopAuto(){
+  localStorage.setItem('kb_auto','off');
+  clearInterval(autoTimer);autoTimer=null;
+  document.getElementById('auto-btn').classList.remove('on');
+  document.getElementById('auto-btn').textContent='AUTO';
+  const saved=localStorage.getItem('kb_theme')||'light';
+  applyTheme(saved);
+}
+function toggleAuto(){
+  if(localStorage.getItem('kb_auto')==='on')stopAuto();
+  else startAuto();
+}
+
+// ─── AI分析 ───
+function openAI(){
+  const body=document.getElementById('ai-body');
+  body.innerHTML=buildAnalysis();
+  const overlay=document.getElementById('ai-overlay');
+  const panel=document.getElementById('ai-panel');
+  requestAnimationFrame(()=>{overlay.classList.add('open');panel.classList.add('open');});
+}
+function closeAI(){
+  document.getElementById('ai-overlay').classList.remove('open');
+  document.getElementById('ai-panel').classList.remove('open');
+}
+function buildAnalysis(){
+  const now=new Date();
+  const y=now.getFullYear(),m=now.getMonth();
+  const me=entries.filter(e=>e.year===y&&e.month===m);
+  const prevMe=entries.filter(e=>{
+    let pm=m-1,py=y;if(pm<0){pm=11;py--;}
+    return e.year===py&&e.month===pm;
+  });
+  const totalExp=me.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const prevExp=prevMe.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const totalInc=me.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const carry=calcCarry();
+  const bal=totalInc+carry-totalExp;
+
+  // 日別集計
+  const lastDate=new Date(y,m+1,0).getDate();
+  const todayDate=now.getDate();
+  const daysLeft=lastDate-todayDate;
+  const dailyAvg=todayDate>0?Math.round(totalExp/todayDate):0;
+  const predicted=totalExp+(dailyAvg*daysLeft);
+
+  // タグ別集計
+  const tagMap={};
+  me.filter(e=>e.type==='expense').forEach(e=>{
+    const k=e.tag||(autoTag(e.content)?.tag)||'その他';
+    tagMap[k]=(tagMap[k]||0)+e.amount;
+  });
+  const topTag=Object.entries(tagMap).sort((a,b)=>b[1]-a[1])[0];
+
+  // 先月比
+  const diff=prevExp>0?Math.round((totalExp-prevExp)/prevExp*100):null;
+  const diffText=diff===null?'先月データなし':diff>0?`先月より ${diff}% 増加 📈`:`先月より ${Math.abs(diff)}% 減少 📉`;
+  const diffColor=diff!==null&&diff>10?'color:var(--red)':diff!==null&&diff<-10?'color:var(--green)':'color:var(--text2)';
+
+  // インサイト文生成
+  const insights=[];
+  if(topTag)insights.push(`一番使っているのは「${topTag[0]}」で ¥${fmt(topTag[1])} です。`);
+  if(dailyAvg>0)insights.push(`1日平均の出費は ¥${fmt(dailyAvg)} のペースです。`);
+  if(daysLeft>0&&dailyAvg>0){
+    if(predicted>totalInc+carry)insights.push(`このペースだと月末に ¥${fmt(Math.round(predicted-(totalInc+carry)))} 赤字になる可能性があります ⚠️`);
+    else insights.push(`このペースなら月末に ¥${fmt(Math.round(bal-dailyAvg*daysLeft))} 残る見込みです ✨`);
+  }
+  if(me.length===0)return`<div class="ai-card"><div class="ai-card-label">データ不足</div><div class="ai-card-value" style="font-size:15px">今月の記録がまだありません</div></div>`;
+
+  return`
+    <div class="ai-card">
+      <div class="ai-card-label">📅 今月の出費</div>
+      <div class="ai-card-value">¥${fmt(totalExp)}</div>
+      <div class="ai-card-sub" style="${diffColor}">${diffText}</div>
+    </div>
+    <div class="ai-card">
+      <div class="ai-card-label">🏆 最多カテゴリ</div>
+      <div class="ai-card-value" style="font-size:18px">${topTag?`${topTag[0]}  ¥${fmt(topTag[1])}`:'記録なし'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="ai-card">
+        <div class="ai-card-label">📆 1日平均</div>
+        <div class="ai-card-value" style="font-size:17px">¥${fmt(dailyAvg)}</div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-card-label">⏳ 残り日数</div>
+        <div class="ai-card-value" style="font-size:17px">${daysLeft}日</div>
+      </div>
+    </div>
+    <div class="ai-card">
+      <div class="ai-card-label">🔮 月末予測残高</div>
+      <div class="ai-card-value" style="${predicted>totalInc+carry?'color:var(--red)':'color:var(--green)'}">¥${fmt(Math.max(0,(totalInc+carry)-predicted))}</div>
+      <div class="ai-card-sub">このペースが続いた場合の予測</div>
+    </div>
+    <div class="ai-insight">
+      <div class="ai-card-label" style="margin-bottom:8px">💡 AIインサイト</div>
+      ${insights.map(t=>`<div class="ai-insight-text">• ${t}</div>`).join('')}
+    </div>`;
 }
 
 window.addEventListener('load',async()=>{
-  // テーマ復元
-  const saved=localStorage.getItem('kb_theme');
-  const preferDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
-  applyTheme(saved==='dark'||(saved===null&&preferDark));
+  // テーマ・AUTO復元
+  if(localStorage.getItem('kb_auto')==='on'){
+    startAuto();
+  } else {
+    const saved=localStorage.getItem('kb_theme');
+    const preferDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+    applyTheme(saved||(preferDark?'dark':'light'));
+  }
 
   document.getElementById('year-label').textContent=selYear+'年';
   await fetchEntries();lastLen=entries.length;render();
@@ -344,7 +522,7 @@ function renderPanel(){
   const de=dE(selDay);
   const eHtml=de.length===0?`<div class="entry-empty">この日の記録はまだありません</div>`:de.map(e=>{
     if(editId===e.id)return`<div class="edit-inline"><div class="edit-toggle"><button class="edit-tb${e.type==='income'?' active income':''}" onclick="setET('${e.id}','income')">入金</button><button class="edit-tb${e.type==='expense'?' active expense':''}" onclick="setET('${e.id}','expense')">出費</button></div><div class="edit-inputs"><input type="number" id="ea-${e.id}" value="${e.amount}" inputmode="numeric"><input type="text" id="ec-${e.id}" value="${e.content||''}"></div><div class="edit-actions"><button class="edit-save" onclick="saveEdit('${e.id}')">保存</button><button class="edit-cancel" onclick="editId=null;render()">キャンセル</button></div></div>`;
-    return`<div class="entry-item"><div class="entry-bar ${e.type}"></div><div class="entry-body"><div class="entry-content">${e.content||'（内容なし）'}</div><div style="display:flex;align-items:center;gap:5px">${e.tag?`<span class="tag-badge" style="background:${e.tagColor}22;color:${e.tagColor}">${e.tagIcon||''}${e.tag}</span>`:''}<span class="entry-type">${e.type==='income'?'入金':'出費'}</span></div></div><div class="entry-amount ${e.type}">${e.type==='income'?'+':'-'}¥${fmt(e.amount)}</div><div class="entry-btns"><button class="entry-btn" onclick="startEdit('${e.id}')">✎</button><button class="entry-btn del" onclick="delEntry('${e.id}')">✕</button></div></div>`;
+    return`<div class="entry-item"><div class="entry-bar ${e.type}"></div><div class="entry-body"><div class="entry-content">${e.content||'（内容なし）'}</div><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">${e.tag?`<span class="tag-badge" style="background:${e.tagColor}22;color:${e.tagColor}">${e.tagIcon||''}${e.tag}</span>`:''}<span class="entry-type">${e.type==='income'?'入金':'出費'}</span></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0"><div class="entry-amount ${e.type}">${e.type==='income'?'+':'-'}¥${fmt(e.amount)}</div><div style="font-size:10px;color:var(--text3)">${fmtTime(e.createdAt)}</div></div><div class="entry-btns"><button class="entry-btn" onclick="startEdit('${e.id}')">✎</button><button class="entry-btn del" onclick="delEntry('${e.id}')">✕</button></div></div>`;
   }).join('');
 
   let rSection='';
@@ -364,7 +542,16 @@ function renderPanel(){
   wrap.innerHTML=`${rSection}<div class="add-form"><div class="form-label">新しく記録を追加</div><div class="type-toggle"><button class="type-btn${formType==='income'?' active income':''}" onclick="formType='income';renderPanel()">入金</button><button class="type-btn${formType==='expense'?' active expense':''}" onclick="formType='expense';renderPanel()">出費</button></div><div class="form-inputs"><input type="number" id="f-amt" placeholder="金額（円）" inputmode="numeric"><input type="text" id="f-cnt" placeholder="内容（例：ランチ、映画）"><button class="submit-btn" onclick="addEntry()">追加する ＋</button><button class="receipt-btn" onclick="document.getElementById('ri').click()">📷 レシートを撮影して入力</button><input type="file" id="ri" accept="image/*" capture="environment" style="display:none" onchange="handleReceipt(this)"></div></div><div class="entry-list">${eHtml}</div>`;
 }
 
-// ─── AUTO TAG ───
+function fmtTime(iso){
+  if(!iso)return'';
+  const d=new Date(iso),now=new Date();
+  const hm=d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+  const diffDay=Math.floor((now-d)/86400000);
+  if(diffDay===0)return`今日 ${hm}`;
+  if(diffDay===1)return`昨日 ${hm}`;
+  if(diffDay<7)return`${diffDay}日前 ${hm}`;
+  return`${d.getMonth()+1}/${d.getDate()} ${hm}`;
+}
 const TAG_RULES=[
   {tag:'コンビニ',icon:'🏪',color:'#3B82F6',kw:['セブン','ファミマ','ローソン','ミニストップ','デイリー','コンビニ','7-eleven','7eleven']},
   {tag:'映画',icon:'🎬',color:'#8B5CF6',kw:['映画','シネマ','cinema','movie','tohoシネマ','イオンシネマ','映画館']},
